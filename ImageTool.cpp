@@ -37,11 +37,59 @@ namespace sstd {
             inline LineItem&operator=(LineItem &&) = delete;
         };
 
+        /* 预处理 */
+        inline cv::Mat toGray(const cv::Mat & arg) {
+
+            if ((arg.cols < 64) || (arg.rows < 64)) {/* 图片太小 */
+                return {};
+            }
+
+            cv::Mat varEvalImage;
+
+            /*重新调整大小，仅仅计算角度没有必要太大*/
+            cv::resize(arg,
+                varEvalImage,
+                cv::Size{ arg.cols / 4 ,arg.rows / 4 },
+                cv::INTER_CUBIC);
+
+            /*计算Yellow颜色的蒙版*/
+            cv::Mat varIsYellow;
+
+            {
+                cv::Mat varHSVImage;
+
+                /* 计算hsv图像 */
+                cv::cvtColor(varEvalImage, varHSVImage, cv::COLOR_BGR2HSV);
+
+                {/*H: 0-180，S： 0-255，V：0-255 */
+                    /* https://www.jianshu.com/p/7361652e15b8 */
+                    cv::Mat varHSV[3];
+                    cv::split(varHSVImage, varHSV);
+                    /* 橙色 或 黄色 */
+                    varIsYellow = (
+                        (varHSV[1] > 10)  &
+                        (varHSV[2] > 10 ) & 
+                        (varHSV[0] > 20 ) & 
+                        (varHSV[0] < 35) );
+                }
+
+            }
+
+            /* 将黄色替换为白色 */
+            varEvalImage.setTo(cv::Scalar(255, 255, 255), varIsYellow);
+
+            /* 将BGR转为Gray */
+            cv::cvtColor(varEvalImage,varEvalImage,cv::COLOR_BGR2GRAY);
+
+            return std::move(varEvalImage);
+
+        }
+
         inline cv::Mat loadImage(const QString & arg) {
             auto const varImageName = arg.toLocal8Bit();
-            return cv::imread({ varImageName.data(),
-                                static_cast<std::size_t>(varImageName.size()) },
-                cv::IMREAD_GRAYSCALE);
+            auto varBGRColor = cv::imread({ varImageName.data(),
+                                static_cast<std::size_t>(varImageName.size()) }, cv::IMREAD_COLOR);
+            return toGray(varBGRColor);
         }
 
         /* https://blog.csdn.net/wsp_1138886114/article/details/83793331 */
@@ -132,7 +180,7 @@ namespace sstd {
             cv::Mat varCannyImage;
             {/**/
                 cv::Mat varHistogramImage;
-                {/**/
+                {/*  */
                     cv::Mat varSourceImage;
                     varSourceImage = ps::loadImage(arg);
                     varHistogramImage = ps::histogramImage(varSourceImage);
@@ -140,7 +188,7 @@ namespace sstd {
                 varCannyImage = ps::cannyImage(varHistogramImage);
             }
             varLines = ps::houghLinesP(varCannyImage);
-            if constexpr (true) {/* 测试绘制霍夫曼直线 */
+            if constexpr (false) {/* 测试绘制霍夫曼直线 */
                 QImage varImage{ arg };
                 {
                     QPainter varPainter{ &varImage };
