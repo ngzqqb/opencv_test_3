@@ -52,7 +52,7 @@ namespace sstd {
                 cv::Size{ arg.cols / 4 ,arg.rows / 4 },
                 cv::INTER_CUBIC);
 
-            {/* 对图像进行锐化 */
+            if constexpr(false){/* 对图像进行锐化 */
                 const static cv::Mat varKernel = []()->cv::Mat {
                     cv::Mat varAns(3, 3, CV_32F, cv::Scalar(0));
                     varAns.at<float>(1, 1) = 5.0;
@@ -66,6 +66,8 @@ namespace sstd {
                     varEvalImage, 
                     varEvalImage.depth(), 
                     varKernel);
+            } else {
+                cv::GaussianBlur(varEvalImage, varEvalImage, cv::Size(5, 5), 3, 3);
             }
 
             /*计算Yellow颜色的蒙版*/
@@ -136,25 +138,22 @@ namespace sstd {
                     cv::THRESH_BINARY_INV);
             }
 
-            if constexpr(false) {/*形态学滤波*/
+            if constexpr(true) {/*形态学滤波*/
                 const auto varC2 = cv::getStructuringElement(cv::MORPH_ELLIPSE, { 3,3 });// cv::Mat(5, 5, CV_8UC1, cv::Scalar(1));
                 const auto varC1 = cv::getStructuringElement(cv::MORPH_ELLIPSE, { 3,3 });
-                cv::dilate(varEvalImage,
-                    varEvalImage,
-                    varC1,
-                    { -1,-1 }, 1);
-                cv::erode(varEvalImage,
-                    varEvalImage,
-                    varC2,
-                    { -1,-1 }, 1);
-                cv::dilate(varEvalImage,
-                    varEvalImage,
-                    varC1,
-                    { -1,-1 }, 1);
-                cv::erode(varEvalImage,
-                    varEvalImage,
-                    varC2,
-                    { -1,-1 }, 1);
+        
+                    cv::erode(varEvalImage,
+                        varEvalImage,
+                        varC2,
+                        { -1,-1 }, 1);
+                    cv::dilate(varEvalImage,
+                        varEvalImage,
+                        varC1,
+                        { -1,-1 }, 2);
+                    cv::erode(varEvalImage,
+                        varEvalImage,
+                        varC2,
+                        { -1,-1 }, 2);
             }
 
             return std::move(varEvalImage);
