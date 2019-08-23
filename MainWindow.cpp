@@ -13,7 +13,6 @@ MainWindow::~MainWindow() {
     delete ui;
 }
 
-
 void MainWindow::on_imageFileNameButton_clicked() {
     auto varAns = QFileDialog::getOpenFileName(nullptr, {}, ui->imageFileName->text());
     if (varAns.isEmpty()) {
@@ -24,9 +23,12 @@ void MainWindow::on_imageFileNameButton_clicked() {
 
 void MainWindow::on_callButton_clicked() {
     auto varFileName = ui->imageFileName->text();
-    auto varAngle = sstd::evalAngle(varFileName);
     sstd::saveImage(
-    sstd::rotateExternImage(varFileName, varAngle>90?(varAngle-180):varAngle), 
-        varFileName+QStringLiteral(".1.bmp"));
+        sstd::loadImage(varFileName),
+        varFileName + QStringLiteral(".1.bmp"));
+    //auto varAngle = sstd::evalAngle(varFileName);
+    //sstd::saveImage(
+    //sstd::rotateExternImage(varFileName, varAngle>90?(varAngle-180):varAngle), 
+    //    varFileName+QStringLiteral(".1.bmp"));
 }
 

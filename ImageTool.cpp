@@ -52,6 +52,22 @@ namespace sstd {
                 cv::Size{ arg.cols / 4 ,arg.rows / 4 },
                 cv::INTER_CUBIC);
 
+            {/* 对图像进行锐化 */
+                const static cv::Mat varKernel = []()->cv::Mat {
+                    cv::Mat varAns(3, 3, CV_32F, cv::Scalar(0));
+                    varAns.at<float>(1, 1) = 5.0;
+                    varAns.at<float>(0, 1) = -1.0;
+                    varAns.at<float>(1, 0) = -1.0;
+                    varAns.at<float>(1, 2) = -1.0;
+                    varAns.at<float>(2, 1) = -1.0;
+                    return std::move(varAns);
+                }();
+                cv::filter2D(varEvalImage, 
+                    varEvalImage, 
+                    varEvalImage.depth(), 
+                    varKernel);
+            }
+
             /*计算Yellow颜色的蒙版*/
             cv::Mat varIsYellow;
 
@@ -65,12 +81,17 @@ namespace sstd {
                     /* https://www.jianshu.com/p/7361652e15b8 */
                     cv::Mat varHSV[3];
                     cv::split(varHSVImage, varHSV);
+
+                    const auto varH = varHSV[0];
+                    auto varS = varHSV[1];
+                    auto varV = varHSV[2];
+
                     /* 橙色 或 黄色 */
                     varIsYellow = (
-                        (varHSV[1] > 10)  &
-                        (varHSV[2] > 10 ) & 
-                        (varHSV[0] > 20 ) & 
-                        (varHSV[0] < 35) );
+                        (varS > 15) &
+                        (varV > 15) &
+                        (varH > 20) &/* yellow : 23 to 40 */
+                        (varH < 43));
                 }
 
             }
@@ -78,8 +99,63 @@ namespace sstd {
             /* 将黄色替换为白色 */
             varEvalImage.setTo(cv::Scalar(255, 255, 255), varIsYellow);
 
+            {/* 直方图均衡化 */
+                cv::Mat varBGR[3];
+                cv::split(varEvalImage, varBGR);
+                cv::equalizeHist(varBGR[0], varBGR[0]);
+                cv::equalizeHist(varBGR[1], varBGR[1]);
+                cv::equalizeHist(varBGR[2], varBGR[2]);
+                cv::merge(varBGR, 3, varEvalImage);
+            }
+
             /* 将BGR转为Gray */
-            cv::cvtColor(varEvalImage,varEvalImage,cv::COLOR_BGR2GRAY);
+            cv::cvtColor(varEvalImage, varEvalImage, cv::COLOR_BGR2GRAY);
+
+            {/* 二值化 */
+                const auto varAllSize =
+                    static_cast<std::int64_t>(varEvalImage.cols) * varEvalImage.rows;
+                std::vector< std::uint8_t > varItems;
+                varItems.reserve(static_cast<std::size_t>(varAllSize));
+                auto varPtr = varEvalImage.data;
+                for (int varI = 0; varI < varEvalImage.rows; ++varI) {
+                    auto varRow = varPtr;
+                    for (int varJ = 0; varJ < varEvalImage.cols; ++varJ) {
+                        varItems.push_back(varRow[varJ]);
+                    }
+                    varPtr += varEvalImage.step;
+                }
+                auto varPos = varItems.begin() + static_cast<int>(0.05 + varItems.size()*0.1);
+                std::nth_element(
+                    varItems.begin(),
+                    varPos,
+                    varItems.end());
+                const int varSplitValue = (*varPos != 255u) ? (*varPos) : 254u;
+                cv::threshold(varEvalImage,
+                    varEvalImage,
+                    varSplitValue, 255,
+                    cv::THRESH_BINARY_INV);
+            }
+
+            if constexpr(false) {/*形态学滤波*/
+                const auto varC2 = cv::getStructuringElement(cv::MORPH_ELLIPSE, { 3,3 });// cv::Mat(5, 5, CV_8UC1, cv::Scalar(1));
+                const auto varC1 = cv::getStructuringElement(cv::MORPH_ELLIPSE, { 3,3 });
+                cv::dilate(varEvalImage,
+                    varEvalImage,
+                    varC1,
+                    { -1,-1 }, 1);
+                cv::erode(varEvalImage,
+                    varEvalImage,
+                    varC2,
+                    { -1,-1 }, 1);
+                cv::dilate(varEvalImage,
+                    varEvalImage,
+                    varC1,
+                    { -1,-1 }, 1);
+                cv::erode(varEvalImage,
+                    varEvalImage,
+                    varC2,
+                    { -1,-1 }, 1);
+            }
 
             return std::move(varEvalImage);
 
@@ -170,8 +246,12 @@ namespace sstd {
             return std::move(varAns);
         }
 
-
     }/**/
+
+    cv::Mat loadImage(const QString & arg) {
+        namespace ps = private_eval_angle;
+        return ps::loadImage(arg);
+    }
 
     double evalAngle(const QString & arg) try {
         namespace ps = private_eval_angle;

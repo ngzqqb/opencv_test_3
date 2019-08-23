@@ -18,7 +18,11 @@
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
-       <widget class="QLineEdit" name="imageFileName"/>
+       <widget class="QLineEdit" name="imageFileName">
+        <property name="text">
+         <string>C:\Users\ggg\Desktop\h\ui\未标题-1.jpg</string>
+        </property>
+       </widget>
       </item>
       <item>
        <widget class="QPushButton" name="imageFileNameButton">
@@ -61,7 +65,7 @@
      <x>0</x>
      <y>0</y>
      <width>400</width>
-     <height>22</height>
+     <height>23</height>
     </rect>
    </property>
   </widget>

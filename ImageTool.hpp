@@ -9,6 +9,7 @@
 
 namespace sstd {
 
+    cv::Mat loadImage(const QString & arg);
     double evalAngle(const QString &);
     cv::Mat rotateExternImage(const cv::Mat &,double,int=64);
     cv::Mat rotateExternImage(const QString &, double, int = 64);
